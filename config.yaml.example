@@ -1,0 +1,19 @@
+name: scenarios_conductor
+logging:
+  level: INFO
+  files:
+  - filename: logs/info.log
+    level: INFO
+prometheus:
+  disable: false
+  port: 9000
+broker:
+  client_id: scenarios-conductor
+  group_id: scenarios-conductor-group
+  bootstrap_servers: localhost:9092,localhost:9093,localhost:9094
+  schema_registry_url: http://localhost:8081
+  auto_offset_reset: latest
+  enable_auto_commit: false
+urban_api:
+  host: http://localhost:8000/
+  api_token: token

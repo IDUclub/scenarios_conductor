@@ -1,0 +1,17 @@
+name: scenarios-conductor
+
+services:
+
+  app:
+    container_name: scenarios_conductor
+    build: .
+    restart: on-failure
+    env_file:
+      - ./.env
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
