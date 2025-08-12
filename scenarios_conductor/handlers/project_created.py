@@ -87,7 +87,6 @@ class ProjectCreatedHandler(BaseMessageHandler[ProjectCreated]):
         if start_time is not None:
             duration = time.perf_counter() - start_time
             PROJECT_CREATED_DURATION_SECONDS.observe(duration)
-
         PROJECT_CREATED_SUCCESS_TOTAL.inc()
         return await super().post_process(*args, **kwargs)
 
@@ -110,6 +109,10 @@ class ProjectCreatedHandler(BaseMessageHandler[ProjectCreated]):
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
+        start_time = self._metadata.pop("start_time", None)
+        if start_time is not None:
+            duration = time.perf_counter() - start_time
+            PROJECT_CREATED_DURATION_SECONDS.observe(duration)
         PROJECT_CREATED_ERROR_TOTAL.inc()
         return await super().handle_error(error, event, ctx, *args, **kwargs)
 

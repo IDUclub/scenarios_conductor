@@ -20,7 +20,7 @@ PROJECT_CREATED_ERROR_TOTAL = Counter(
 PROJECT_CREATED_DURATION_SECONDS = Histogram(
     "project_created_duration_seconds",
     "Duration of ProjectCreated event processing",
-    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0),
+    buckets=(0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 120),
 )
 
 
@@ -42,5 +42,5 @@ REGIONAL_SCENARIO_CREATED_ERROR_TOTAL = Counter(
 REGIONAL_SCENARIO_CREATED_DURATION_SECONDS = Histogram(
     "regional_scenario_created_duration_seconds",
     "Duration of ProjectCreated event processing",
-    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0),
+    buckets=(0.1, 0.2, 0.5, 1, 2, 5, 10, 30, 60, 120),
 )

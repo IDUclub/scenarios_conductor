@@ -45,8 +45,6 @@ async def main_async() -> None:
     kafka_settings = KafkaConsumerSettings.from_custom_config(app_config.broker)
     consumer = KafkaConsumerService(consumer_settings=kafka_settings, logger=logger)
 
-    print(app_config.urban_api)
-
     # Create shared HTTP client for urban API
     urban_api_client = make_http_client(
         host=app_config.urban_api.host,

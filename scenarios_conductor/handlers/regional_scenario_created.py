@@ -109,6 +109,10 @@ class RegionalScenarioCreatedHandler(BaseMessageHandler[RegionalScenarioCreated]
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
+        start_time = self._metadata.pop("start_time", None)
+        if start_time is not None:
+            duration = time.perf_counter() - start_time
+            REGIONAL_SCENARIO_CREATED_DURATION_SECONDS.observe(duration)
         REGIONAL_SCENARIO_CREATED_ERROR_TOTAL.inc()
         return await super().handle_error(error, event, ctx, *args, **kwargs)
 
