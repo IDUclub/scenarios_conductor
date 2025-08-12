@@ -62,6 +62,8 @@ class UrbanAPIConfig:
 
     host: str
     api_token: str
+    ping_timeout_seconds: float = 2.0
+    operation_timeout_seconds: float = 60.0
 
 
 @dataclass

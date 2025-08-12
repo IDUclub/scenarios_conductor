@@ -17,3 +17,5 @@ broker:
 urban_api:
   host: http://localhost:8000/
   api_token: token
+  ping_timeout_seconds: 2.0
+  operation_timeout_seconds: 60.0

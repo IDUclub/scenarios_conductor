@@ -16,7 +16,7 @@ def make_http_client(
     api_token: str,
     *,
     ping_timeout_seconds: float = 2.0,
-    operation_timeout_seconds: float = 30.0,
+    operation_timeout_seconds: float = 60.0,
     logger: structlog.stdlib.BoundLogger = ...,
 ) -> UrbanClient:
     """Get HTTP Urban API client."""

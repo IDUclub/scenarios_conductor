@@ -45,7 +45,7 @@ class HTTPUrbanClient(UrbanClient):
         api_token: str,
         *,
         ping_timeout_seconds: float = 2.0,
-        operation_timeout_seconds: float = 30.0,
+        operation_timeout_seconds: float = 60.0,
         logger: structlog.stdlib.BoundLogger = ...,
     ):
         if logger is ...:

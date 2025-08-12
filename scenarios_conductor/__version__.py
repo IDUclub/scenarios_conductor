@@ -1,3 +1,3 @@
 """Scenario Conductor version is defined here along with pyproject.toml."""
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
