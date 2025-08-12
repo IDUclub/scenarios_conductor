@@ -1,0 +1,26 @@
+name: scenarios-conductor
+
+services:
+  app:
+    container_name: scenarios_conductor
+    image: ${IMAGE}
+    restart: always
+    ports:
+      - ${PROMETHEUS_PORT_MAPPING:-9000:9000}
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      - ${LOG_VOLUME:-/var/log/scenarios_conductor}:/app/logs
+      - ${REAL_CONFIG_PATH}:/app/config.yaml:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    networks:
+      - ${CUSTOM_NETWORK:-default}
+
+networks:
+  default:
+  hosting_net:
+    external: true

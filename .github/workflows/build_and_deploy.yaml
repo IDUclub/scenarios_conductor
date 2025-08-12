@@ -1,0 +1,46 @@
+name: build_and_deploy
+on: workflow_dispatch
+
+env:
+  IMAGE: ${{ secrets.REGISTRY }}/scenarios_conductor
+  CONTAINER_NAME: scenarios_conductor
+
+jobs:
+  build:
+    runs-on: 107_runner
+    outputs:
+      tag: ${{ steps.date.outputs.NOW }}
+    steps:
+      - name: Get build tag
+        id: date
+        run: echo "NOW=$(date +'%Y-%m-%dT%H-%M-%S')" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t $IMAGE:${{ steps.date.outputs.NOW }} .
+
+      - name: Push image
+        run: docker push $IMAGE:${{ steps.date.outputs.NOW }}
+
+  deploy:
+    needs: build
+    runs-on: 107_runner
+    env:
+      TAG: ${{ needs.build.outputs.tag }}
+    steps:
+
+      - name: Set image versions
+        run: echo "IMAGE=${{ env.IMAGE }}:$TAG" >> $GITHUB_ENV
+
+      - name: Copy env file
+        env:
+          ENV_PATH: ${{ secrets.ENV_PATH }}
+        run: cp $ENV_PATH/.env ./
+
+      - name: Stop old container
+        run: docker rm -f $CONTAINER_NAME || true
+
+      - name: Deploy
+        run: docker compose -f docker-compose.actions.yaml --env-file .env up -d

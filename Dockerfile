@@ -17,12 +17,8 @@ RUN sed -i '0,/version = .*/ s//version = "0.1.0"/' pyproject.toml
 RUN poetry config virtualenvs.create false && \
     poetry install --with dev --no-root
 
-COPY config.yaml /app/
 COPY scenarios_conductor /app/scenarios_conductor
 
 RUN pip install .
-
-COPY logrotate.conf /etc/logrotate.d/scenarios_conductor
-RUN chmod 0644 /etc/logrotate.d/scenarios_conductor
 
 CMD ["launch_app"]

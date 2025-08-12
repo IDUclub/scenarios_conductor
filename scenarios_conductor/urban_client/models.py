@@ -47,10 +47,6 @@ class Scenario(BaseModel):
     functional_zone_type: FunctionalZoneTypeBasic | None
     name: str = Field(..., description="name of the scenario", examples=["--"])
     is_based: bool = Field(..., description="boolean parameter to determine base scenario")
-    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(
-        ..., description="phase of the scenario", examples=["pre_design"]
-    )
-    phase_percentage: float | None = Field(..., description="percentage of the phase", examples=[100])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="scenario additional properties",

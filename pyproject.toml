@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "scenarios-conductor"
-version = "0.1.0"
-description = ""
+version = "0.1.1"
+description = "Scenarios Conductor is a fully autonomous asynchronous microservice written in Python using the otteroad framework."
 authors = ["Ruslan Babayev <rus.babaef@yandex.ru>"]
 readme = "README.md"
 
