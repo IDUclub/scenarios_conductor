@@ -7,7 +7,7 @@ env:
 
 jobs:
   build:
-    runs-on: 107_runner
+    runs-on: 16_runner
     outputs:
       tag: ${{ steps.date.outputs.NOW }}
     steps:
@@ -26,7 +26,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: 107_runner
+    runs-on: 16_runner
     env:
       TAG: ${{ needs.build.outputs.tag }}
     steps:
