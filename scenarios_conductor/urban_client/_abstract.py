@@ -4,7 +4,7 @@ import abc
 from datetime import date
 from typing import Literal
 
-from scenarios_conductor.urban_client.models import Project, Scenario
+from scenarios_conductor.urban_client.models import Project, ProjectCadastrePut, ProjectTerritory, Scenario
 
 
 class UrbanClient(abc.ABC):
@@ -33,6 +33,10 @@ class UrbanClient(abc.ABC):
     @abc.abstractmethod
     async def get_project_by_id(self, project_id: int) -> Project:
         """Get project by identifier."""
+
+    @abc.abstractmethod
+    async def get_project_territory_by_project_id(self, project_id: int) -> ProjectTerritory:
+        """Get project territory by identifier."""
 
     @abc.abstractmethod
     async def get_scenario_by_id(self, scenario_id: int) -> Scenario:
@@ -65,3 +69,7 @@ class UrbanClient(abc.ABC):
     @abc.abstractmethod
     async def create_base_scenario(self, project_id: int, scenario_id: int) -> Scenario:
         """Create a new base scenario for given project from specified regional scenario."""
+
+    @abc.abstractmethod
+    async def put_project_cadastres(self, cadastres: list[ProjectCadastrePut], project_id: int):
+        """Update list of project cadastres."""

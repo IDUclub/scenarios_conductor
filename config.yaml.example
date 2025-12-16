@@ -7,6 +7,12 @@ logging:
 prometheus:
   disable: false
   port: 9000
+fileserver:
+  url: http://localhost:9000
+  bucket: scenarios.conductor
+  cadastre_path: cadastre.pickle
+  access_key: ''
+  secret_key: ''
 broker:
   client_id: scenarios-conductor
   group_id: scenarios-conductor-group

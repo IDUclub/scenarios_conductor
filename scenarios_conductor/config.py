@@ -45,6 +45,21 @@ class PrometheusConfig:
 
 
 @dataclass
+class FileServerConfig:
+    """Configuration for MinIO file server."""
+
+    url: str
+    bucket: str
+    cadastre_path: str
+    access_key: str
+    secret_key: str
+
+    def __post_init__(self):
+        if not self.url.startswith("http"):
+            self.url = "http://" + self.url
+
+
+@dataclass
 class BrokerConfig:
     """Configuration for Kafka broker and Schema Registry."""
 
@@ -77,6 +92,7 @@ class AppConfig:
     name: str
     logging: LoggingConfig
     prometheus: PrometheusConfig
+    fileserver: FileServerConfig
     broker: BrokerConfig
     urban_api: UrbanAPIConfig
 
@@ -104,6 +120,7 @@ class AppConfig:
                 ("name", self.name),
                 ("logging", to_ordered_dict_recursive(self.logging)),
                 ("prometheus", to_ordered_dict_recursive(self.prometheus)),
+                ("fileserver", to_ordered_dict_recursive(self.fileserver)),
                 ("broker", to_ordered_dict_recursive(self.broker)),
                 ("urban_api", to_ordered_dict_recursive(self.urban_api)),
             ]
@@ -144,6 +161,13 @@ class AppConfig:
             name="example app",
             logging=LoggingConfig(level="INFO", files=[FileLogger(filename="logs/info.log", level="INFO")]),
             prometheus=PrometheusConfig(port=9000, disable=False),
+            fileserver=FileServerConfig(
+                url="http://localhost:9000",
+                bucket="scenarios.conductor",
+                cadastre_path="/home/user/path",
+                access_key="",
+                secret_key="",
+            ),
             broker=BrokerConfig(
                 client_id="scenarios-conductor",
                 group_id="scenarios-conductor-group",
@@ -180,6 +204,7 @@ class AppConfig:
                 name=data.get("name", "example app"),
                 logging=LoggingConfig(**data.get("logging", {})),
                 prometheus=PrometheusConfig(**data.get("prometheus", {})),
+                fileserver=FileServerConfig(**data.get("fileserver", {})),
                 broker=BrokerConfig(**data.get("broker", {})),
                 urban_api=UrbanAPIConfig(**data.get("urban_api", {})),
             )

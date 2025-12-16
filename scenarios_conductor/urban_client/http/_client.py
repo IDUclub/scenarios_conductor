@@ -18,7 +18,7 @@ from scenarios_conductor.urban_client.http.exceptions import (
     InvalidStatusCode,
 )
 from scenarios_conductor.urban_client.http.models import Paginated
-from scenarios_conductor.urban_client.models import Project, Scenario
+from scenarios_conductor.urban_client.models import Project, ProjectCadastrePut, ProjectTerritory, Scenario
 
 
 def _handle_exceptions(func: Callable) -> Callable:
@@ -126,6 +126,11 @@ class HTTPUrbanClient(UrbanClient):
         return Project.model_validate_json(await resp.text()) if resp else None
 
     @_handle_exceptions
+    async def get_project_territory_by_project_id(self, project_id: int) -> ProjectTerritory:
+        resp = await self._request("GET", f"api/v1/projects/{project_id}/territory")
+        return ProjectTerritory.model_validate_json(await resp.text()) if resp else None
+
+    @_handle_exceptions
     async def get_scenario_by_id(self, scenario_id: int) -> Scenario:
         resp = await self._request("GET", f"api/v1/scenarios/{scenario_id}")
         return Scenario.model_validate_json(await resp.text()) if resp else None
@@ -180,3 +185,8 @@ class HTTPUrbanClient(UrbanClient):
     async def create_base_scenario(self, project_id: int, scenario_id: int) -> Scenario:
         resp = await self._request("POST", f"api/v1/projects/{project_id}/base_scenario/{scenario_id}")
         return Scenario.model_validate_json(await resp.text()) if resp else None
+
+    @_handle_exceptions
+    async def put_project_cadastres(self, cadastres: list[ProjectCadastrePut], project_id: int):
+        data = [cadastre.model_dump() for cadastre in cadastres]
+        await self._request("PUT", f"api/v1/projects/{project_id}/cadastres", json=data)

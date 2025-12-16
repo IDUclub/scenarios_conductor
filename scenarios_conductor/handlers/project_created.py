@@ -20,6 +20,7 @@ from scenarios_conductor.prometheus.metrics import (
     PROJECT_CREATED_SUCCESS_TOTAL,
 )
 from scenarios_conductor.services import BaseScenarioService
+from scenarios_conductor.services.cadastre import ProjectCadastreService
 
 
 class ProjectCreatedHandler(BaseMessageHandler[ProjectCreated]):
@@ -30,16 +31,23 @@ class ProjectCreatedHandler(BaseMessageHandler[ProjectCreated]):
     the creation of base scenarios to the service layer.
     """
 
-    def __init__(self, service: BaseScenarioService, logger: structlog.stdlib.BoundLogger):
+    def __init__(
+        self,
+        scenario_service: BaseScenarioService,
+        cadastre_service: ProjectCadastreService,
+        logger: structlog.stdlib.BoundLogger,
+    ):
         """
-        Initialize the handler with a service instance and logger.
+        Initialize the handler with service instances and logger.
 
         Args:
-            service (BaseScenarioService): Service that handles business logic.
+            scenario_service (BaseScenarioService): Service for scenario creation.
+            cadastre_service (ProjectCadastreService): Service for cadastre processing.
             logger (structlog.stdlib.BoundLogger): Logger for structured logging.
         """
         super().__init__(logger)
-        self._service = service
+        self._scenario_service = scenario_service
+        self._cadastre_service = cadastre_service
         self._metadata: dict[str, Any] = {}
 
     async def on_startup(self):
@@ -118,10 +126,11 @@ class ProjectCreatedHandler(BaseMessageHandler[ProjectCreated]):
 
     async def handle(self, event: ProjectCreated, ctx: Message):
         """
-        Main event handler logic. Delegates base scenario creation to the service.
+        Main event handler logic. Delegates to both scenario and cadastre services.
 
         Args:
             event (ProjectCreated): The deserialized project created event.
             ctx (Message): The original Kafka message.
         """
-        await self._service.handle_project_created(event)
+        await self._scenario_service.handle_project_created(event)
+        await self._cadastre_service.handle_project_created(event)

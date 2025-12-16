@@ -15,9 +15,10 @@ from prometheus_client import start_http_server
 
 from scenarios_conductor.config import AppConfig
 from scenarios_conductor.handlers import handlers_list
-from scenarios_conductor.services import BaseScenarioService
+from scenarios_conductor.services import BaseScenarioService, ProjectCadastreService
 from scenarios_conductor.urban_client import make_http_client
 from scenarios_conductor.utils.logging import configure_logging
+from scenarios_conductor.utils.minio import download_from_minio
 
 # Load environment variables from .env file or from the specified path
 load_dotenv(os.getenv("ENVFILE", ".env"))
@@ -26,7 +27,7 @@ load_dotenv(os.getenv("ENVFILE", ".env"))
 async def main_async() -> None:
     """Main asynchronous entry point for launching the Kafka consumer service."""
     # Load application configuration from YAML or defaults
-    app_config = AppConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
+    app_config = AppConfig.from_file_or_default(os.getenv("CONDUCTOR_CONFIG_PATH"))
 
     # Configure application logging
     loggers_dict = {logger_config.filename: logger_config.level for logger_config in app_config.logging.files}
@@ -40,6 +41,10 @@ async def main_async() -> None:
     if not app_config.prometheus.disable:
         start_http_server(app_config.prometheus.port)
         await logger.ainfo("Prometheus metrics server started", port=app_config.prometheus.port)
+
+    # Download cadastre file from Minio
+    await logger.ainfo("Downloading cadastre file from Minio...", file=app_config.fileserver.cadastre_path)
+    cadastre_file_path = download_from_minio(app_config.fileserver, app_config.fileserver.cadastre_path, logger)
 
     # Initialize Kafka consumer settings and service
     kafka_settings = KafkaConsumerSettings.from_custom_config(app_config.broker)
@@ -55,8 +60,12 @@ async def main_async() -> None:
 
     # Register all message handlers with the consumer
     scenario_service = BaseScenarioService(urban_api_client, logger=logger)
+    cadastre_service = ProjectCadastreService(urban_api_client, cadastre_file_path, logger=logger)
     for handler_class in handlers_list:
-        handler = handler_class(scenario_service, logger=logger)
+        if handler_class.__name__ == "ProjectCreatedHandler":
+            handler = handler_class(scenario_service, cadastre_service, logger=logger)
+        else:
+            handler = handler_class(scenario_service, logger=logger)
         consumer.register_handler(handler)
 
     # Start the Kafka consumer worker
@@ -70,6 +79,11 @@ async def main_async() -> None:
         # Graceful shutdown on interrupt
         await urban_api_client.close()
         await consumer.stop()
+
+        # Clean up temporary file
+        if os.path.exists(cadastre_file_path):
+            os.remove(cadastre_file_path)
+            await logger.ainfo("Temporary cadastre file removed")
 
 
 def main() -> None:
