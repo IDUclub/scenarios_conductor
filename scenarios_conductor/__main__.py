@@ -27,7 +27,7 @@ load_dotenv(os.getenv("ENVFILE", ".env"))
 async def main_async() -> None:
     """Main asynchronous entry point for launching the Kafka consumer service."""
     # Load application configuration from YAML or defaults
-    app_config = AppConfig.from_file_or_default(os.getenv("CONDUCTOR_CONFIG_PATH"))
+    app_config = AppConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
     # Configure application logging
     loggers_dict = {logger_config.filename: logger_config.level for logger_config in app_config.logging.files}
