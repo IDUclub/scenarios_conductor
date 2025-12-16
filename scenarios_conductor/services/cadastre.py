@@ -1,7 +1,7 @@
 """This module contains the ProjectCadastreService class, which is responsible for
 handling cadastre data processing for newly created projects.
 """
-
+import math
 import pickle
 from collections.abc import Iterable
 from typing import Any
@@ -18,12 +18,21 @@ from scenarios_conductor.urban_client.models import Geometry, ProjectCadastrePut
 
 CADASTRE_COLUMN_MAP: dict[str, str] = {
     # ProjectCadastrePut field        # GDF column
-    "status": "Статус",
-    "zone_pzz": "Зона ПЗЗ",
-    "possible_pzz_vri": "Возможный ВРИ Град. регламента (ПЗЗ)",
-    "possible_vri_list": "Возможные ВРИ (список)",
-    "permitted_use_established_by_document": "ВРИ РосРеестр_left",
-    "similarity_score": "Схожесть (score)",
+    "area": "options_area",
+    "cad_num": "options_cad_num",
+    "cost_value": "options_cost_value",
+    "land_record_area": "options_land_record_area",
+    "land_record_category_type": "options_land_record_category_type",
+    "ownership_type": "options_ownership_type",
+    "permitted_use_established_by_document": "options_permitted_use_established_by_document",
+    "quarter_cad_number": "options_quarter_cad_number",
+    "readable_address": "options_readable_address",
+    "specified_area": "options_specified_area",
+    "status": "status",
+    "zone_pzz": "zone_pzz",
+    "possible_pzz_vri": "possible_vri_pzz",
+    "possible_vri_list": "possible_vri_list",
+    "similarity_score": "similarity_score",
 }
 
 
@@ -47,6 +56,38 @@ class ProjectCadastreService:
     # Cadastre loading
     # -------------------------
 
+    @staticmethod
+    def _expand_dict_column(
+        gdf: gpd.GeoDataFrame,
+        column: str,
+        prefix: str,
+    ) -> gpd.GeoDataFrame:
+        """
+        Expand dict column into separate columns with prefix.
+
+        Example:
+            options = {"a": 1, "b": 2}
+            -> options_a, options_b
+        """
+        if column not in gdf.columns:
+            return gdf
+
+        # replace non-dict with empty dict
+        series = gdf[column].apply(lambda x: x if isinstance(x, dict) else {})
+
+        expanded = pd.json_normalize(series).add_prefix(f"{prefix}_")
+
+        # keep index alignment
+        expanded.index = gdf.index
+
+        # drop original column and concat
+        gdf = pd.concat(
+            [gdf.drop(columns=[column]), expanded],
+            axis=1,
+        )
+
+        return gdf
+
     def _load_cadastre(self):
         """Load cadastre GeoDataFrame from pickle file and reproject to EPSG:4326."""
 
@@ -66,6 +107,9 @@ class ProjectCadastreService:
 
         if original_crs.to_epsg() != 4326:
             data = data.to_crs(epsg=4326)
+
+        data = self._expand_dict_column(data, "options", "options")
+        data = self._expand_dict_column(data, "system_info", "system")
 
         self._cadastre_gdf = data
 
@@ -118,18 +162,24 @@ class ProjectCadastreService:
         if val is None:
             return None
 
-        # pandas / numpy NaN
+        # pandas / numpy NaN / NA
         try:
             if pd.isna(val):
                 return None
-        except Exception:  # pylint:disable=broad-exception-caught
+        except Exception:
             pass
+
+        # float NaN (на всякий случай)
+        if isinstance(val, float) and math.isnan(val):
+            return None
 
         # numpy scalar -> python scalar
         if isinstance(val, np.generic):
-            return val.item()
+            val = val.item()
+            if isinstance(val, float) and math.isnan(val):
+                return None
 
-        # numpy array -> list
+        # numpy array
         if isinstance(val, np.ndarray):
             if val.size == 0 or np.any(pd.isna(val)):
                 return None
@@ -153,10 +203,10 @@ class ProjectCadastreService:
         # --- mapped fields ---
         kwargs: dict[str, Any] = {}
         for model_field, gdf_column in CADASTRE_COLUMN_MAP.items():
-            if gdf_column in row:
-                val = self._normalize_value(row[gdf_column])
-                if val is not None:
-                    kwargs[model_field] = val
+            raw = row.get(gdf_column)
+            val = self._normalize_value(raw)
+            if val is not None:
+                kwargs[model_field] = val
 
         # --- base properties ---
         used_columns = {"geometry"} | set(CADASTRE_COLUMN_MAP.values())
