@@ -164,7 +164,7 @@ class AppConfig:
             fileserver=FileServerConfig(
                 url="http://localhost:9000",
                 bucket="scenarios.conductor",
-                cadastre_path="/home/user/path",
+                cadastre_path="cadastre.pickle",
                 access_key="",
                 secret_key="",
             ),
