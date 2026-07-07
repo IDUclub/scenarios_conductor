@@ -42,12 +42,16 @@ class TestProjectCreatedHandler:
         return AsyncMock()
 
     @pytest.fixture
+    def cadastre_service(self):
+        return AsyncMock()
+
+    @pytest.fixture
     def logger(self):
         return AsyncMock()
 
     @pytest.fixture
-    def handler(self, service, logger):
-        return ProjectCreatedHandler(service=service, logger=logger)
+    def handler(self, service, cadastre_service, logger):
+        return ProjectCreatedHandler(scenario_service=service, cadastre_service=cadastre_service, logger=logger)
 
     @pytest.fixture
     def event(self):
@@ -112,6 +116,7 @@ class TestProjectCreatedHandler:
         base_handle_error.assert_awaited_once_with(error, event, ctx)
 
     @pytest.mark.asyncio
-    async def test_handle_calls_service(self, handler, service, event, ctx):
+    async def test_handle_calls_service(self, handler, service, cadastre_service, event, ctx):
         await handler.handle(event, ctx)
         service.handle_project_created.assert_awaited_once_with(event)
+        cadastre_service.handle_project_created.assert_awaited_once_with(event)

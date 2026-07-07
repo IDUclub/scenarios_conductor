@@ -1,6 +1,7 @@
 """Urban_api client is located here. There is a possibility it will move to an individual package."""
 
 import structlog.stdlib
+from idu_service_auth import KeycloakTokenClient, KeycloakTokenConfig
 
 from ._abstract import UrbanClient
 from .http import HTTPUrbanClient
@@ -11,9 +12,9 @@ __all__ = [
 ]
 
 
-def make_http_client(
+async def make_http_client(
     host: str,
-    api_token: str,
+    auth_config: KeycloakTokenConfig,
     *,
     ping_timeout_seconds: float = 2.0,
     operation_timeout_seconds: float = 60.0,
@@ -22,10 +23,10 @@ def make_http_client(
     """Get HTTP Urban API client."""
     client = HTTPUrbanClient(
         host,
-        api_token=api_token,
+        auth_client=KeycloakTokenClient(auth_config),
         ping_timeout_seconds=ping_timeout_seconds,
         operation_timeout_seconds=operation_timeout_seconds,
         logger=logger,
     )
-    client.start()
+    await client.start()
     return client

@@ -11,7 +11,7 @@ class UrbanClient(abc.ABC):
     """Urban API client"""
 
     @abc.abstractmethod
-    def start(self):
+    async def start(self):
         """Start the client session."""
 
     @abc.abstractmethod

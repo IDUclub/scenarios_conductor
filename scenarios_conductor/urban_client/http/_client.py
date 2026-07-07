@@ -8,6 +8,7 @@ from typing import Literal
 
 import structlog.stdlib
 from aiohttp import ClientConnectionError, ClientResponse, ClientSession, ClientTimeout
+from idu_service_auth import KeycloakTokenClient
 
 from scenarios_conductor.urban_client._abstract import UrbanClient
 from scenarios_conductor.urban_client.exceptions import APIConnectionError, APITimeoutError
@@ -42,7 +43,7 @@ class HTTPUrbanClient(UrbanClient):
     def __init__(
         self,
         host: str,
-        api_token: str,
+        auth_client: KeycloakTokenClient,
         *,
         ping_timeout_seconds: float = 2.0,
         operation_timeout_seconds: float = 60.0,
@@ -55,31 +56,34 @@ class HTTPUrbanClient(UrbanClient):
             host = f"http://{host.rstrip('/')}/"
 
         self._host = host
-        self._api_token = api_token
+        self._auth_client = auth_client
         self._logger = logger.bind(host=self._host)
         self._ping_timeout = ping_timeout_seconds
         self._operation_timeout = operation_timeout_seconds
 
         self._session: ClientSession | None = None
 
-    def get_headers(self) -> dict[str, str]:
+    async def get_headers(self) -> dict[str, str]:
         """Return request headers."""
-        return {"Authorization": f"Bearer {self._api_token}"}
+        return await self._auth_client.get_authorization_headers()
 
     async def __aenter__(self):
-        return self.start()
+        return await self.start()
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
 
-    def start(self):
-        self._session = ClientSession(base_url=self._host, timeout=ClientTimeout(self._operation_timeout))
+    async def start(self):
+        if self._session is None or self._session.closed:
+            self._session = ClientSession(base_url=self._host, timeout=ClientTimeout(self._operation_timeout))
+        await self._auth_client.__aenter__()
         return self
 
     async def close(self):
         if self._session:
             await self._session.close()
             self._session = None
+        await self._auth_client.aclose()
 
     def _get_session(self) -> ClientSession:
         """Get client session."""
@@ -89,7 +93,8 @@ class HTTPUrbanClient(UrbanClient):
 
     async def _request(self, method: str, path: str, **kwargs) -> ClientResponse:
         session = self._get_session()
-        kwargs.setdefault("headers", self.get_headers())
+        if "headers" not in kwargs:
+            kwargs["headers"] = await self.get_headers()
         resp: ClientResponse = await session.request(method, path, **kwargs)
         if resp.status in (200, 201):
             return resp
@@ -179,7 +184,7 @@ class HTTPUrbanClient(UrbanClient):
         session = self._get_session()
         resp = await self._request("GET", "api/v1/projects", params=params)
         result = Paginated[Project].model_validate_json(await resp.text()) if resp else None
-        return await result.get_all_pages(session) if result else None
+        return await result.get_all_pages(session, headers_provider=self.get_headers) if result else None
 
     @_handle_exceptions
     async def create_base_scenario(self, project_id: int, scenario_id: int) -> Scenario:

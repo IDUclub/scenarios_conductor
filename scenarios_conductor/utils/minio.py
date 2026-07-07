@@ -1,6 +1,5 @@
 """Utility for downloading files from Minio S3 storage."""
 
-
 import tempfile
 
 import structlog

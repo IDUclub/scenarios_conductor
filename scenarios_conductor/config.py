@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TextIO
 
 import yaml
+from idu_service_auth import KeycloakTokenConfig
 
 from .utils.logging import LoggingLevel
 
@@ -72,13 +73,44 @@ class BrokerConfig:
 
 
 @dataclass
+class UrbanAPIAuthConfig:
+    """Keycloak client credentials for Urban API requests."""
+
+    auth_server_url: str
+    realm: str
+    client_id: str
+    client_secret: str
+    scope: str | None = None
+    request_timeout_seconds: float = 10.0
+    refresh_before_expiry_seconds: float = 30.0
+    background_refresh: bool = True
+
+    def to_keycloak_token_config(self) -> KeycloakTokenConfig:
+        """Build idu-service-auth config from application config."""
+        return KeycloakTokenConfig(
+            auth_server_url=self.auth_server_url,
+            realm=self.realm,
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            scope=self.scope,
+            request_timeout_seconds=self.request_timeout_seconds,
+            refresh_before_expiry_seconds=self.refresh_before_expiry_seconds,
+            background_refresh=self.background_refresh,
+        )
+
+
+@dataclass
 class UrbanAPIConfig:
     """Configuration for Urban API access."""
 
     host: str
-    api_token: str
+    auth: UrbanAPIAuthConfig
     ping_timeout_seconds: float = 2.0
     operation_timeout_seconds: float = 60.0
+
+    def __post_init__(self):
+        if isinstance(self.auth, dict):
+            self.auth = UrbanAPIAuthConfig(**self.auth)
 
 
 @dataclass
@@ -176,7 +208,15 @@ class AppConfig:
                 auto_offset_reset="latest",
                 enable_auto_commit=False,
             ),
-            urban_api=UrbanAPIConfig(host="http://localhost:8100", api_token="token"),
+            urban_api=UrbanAPIConfig(
+                host="http://localhost:8100",
+                auth=UrbanAPIAuthConfig(
+                    auth_server_url="http://localhost:8080",
+                    realm="IDU",
+                    client_id="scenarios-conductor",
+                    client_secret="secret",
+                ),
+            ),
         )
 
     @classmethod

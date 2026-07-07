@@ -14,12 +14,31 @@ from scenarios_conductor.urban_client.http.exceptions import (
 )
 
 
+class FakeAuthClient:
+    def __init__(self):
+        self.entered = False
+        self.closed = False
+        self.headers_calls = 0
+
+    async def __aenter__(self):
+        self.entered = True
+        return self
+
+    async def get_authorization_headers(self) -> dict[str, str]:
+        self.headers_calls += 1
+        return {"Authorization": "Bearer token"}
+
+    async def aclose(self):
+        self.closed = True
+
+
 @pytest.mark.asyncio
 class TestHTTPUrbanClient:
 
     @pytest.fixture(autouse=True)
     def setup_client(self):
-        self.client = HTTPUrbanClient("urban.test", "token")
+        self.auth_client = FakeAuthClient()
+        self.client = HTTPUrbanClient("urban.test", self.auth_client)
 
     async def test_get_version_success(self):
         response_mock = AsyncMock()
@@ -65,6 +84,17 @@ class TestHTTPUrbanClient:
         ):
             with pytest.raises(BadRequest):
                 await self.client._request("GET", "/some")
+
+    async def test_request_uses_auth_client_headers(self):
+        response = AsyncMock()
+        response.status = 200
+        session = AsyncMock(request=AsyncMock(return_value=response))
+
+        with patch.object(self.client, "_get_session", return_value=session):
+            assert await self.client._request("GET", "/some") is response
+
+        session.request.assert_awaited_once_with("GET", "/some", headers={"Authorization": "Bearer token"})
+        assert self.auth_client.headers_calls == 1
 
     async def test_request_handles_404(self):
         response = AsyncMock()
@@ -132,4 +162,6 @@ class TestHTTPUrbanClient:
         async with self.client as instance:
             assert isinstance(instance, HTTPUrbanClient)
             assert self.client._session is not None
+            assert self.auth_client.entered is True
         assert self.client._session is None
+        assert self.auth_client.closed is True

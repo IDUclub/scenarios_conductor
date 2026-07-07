@@ -1,6 +1,7 @@
 """This module contains the ProjectCadastreService class, which is responsible for
 handling cadastre data processing for newly created projects.
 """
+
 import math
 import pickle
 from collections.abc import Iterable

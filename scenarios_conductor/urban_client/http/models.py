@@ -1,5 +1,6 @@
 """HTTP-specific datatypes are defined here."""
 
+from collections.abc import Awaitable, Callable
 from typing import Generic, TypeVar
 
 from aiohttp import ClientSession
@@ -18,12 +19,17 @@ class Paginated(BaseModel, Generic[_T]):
     next: str | None
     results: list[_T]
 
-    async def get_all_pages(self, session: ClientSession) -> list[_T]:
+    async def get_all_pages(
+        self,
+        session: ClientSession,
+        headers_provider: Callable[[], Awaitable[dict[str, str]]] | None = None,
+    ) -> list[_T]:
         """Get all pages if there are more than one and return a whole list."""
         results: list[_T] = list(self.results)
         url = self.next
         while url is not None:
-            resp = await session.get(url)
+            headers = await headers_provider() if headers_provider is not None else None
+            resp = await session.get(url, headers=headers)
             if resp.status != 200:
                 raise InvalidStatusCode(f"Expected code 200, got {resp.status}")
             result = Paginated[_T].model_validate_json(await resp.text())

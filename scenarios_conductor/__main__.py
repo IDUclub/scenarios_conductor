@@ -3,7 +3,7 @@ This module initializes and starts the Kafka consumer service for scenario handl
 It loads configuration, sets up logging, registers message handlers, and optionally
 starts a Prometheus metrics server.
 
-The service listens for Kafka events and processes them using the registered handlers.
+The service listens to Kafka events and processes them using the registered handlers.
 """
 
 import asyncio
@@ -25,7 +25,7 @@ load_dotenv(os.getenv("ENVFILE", ".env"))
 
 
 async def main_async() -> None:
-    """Main asynchronous entry point for launching the Kafka consumer service."""
+    """The Main asynchronous entry point for launching the Kafka consumer service."""
     # Load application configuration from YAML or defaults
     app_config = AppConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
@@ -42,7 +42,7 @@ async def main_async() -> None:
         start_http_server(app_config.prometheus.port)
         await logger.ainfo("Prometheus metrics server started", port=app_config.prometheus.port)
 
-    # Download cadastre file from Minio
+    # Download the cadastre file from Minio
     await logger.ainfo("Downloading cadastre file from Minio...", file=app_config.fileserver.cadastre_path)
     cadastre_file_path = download_from_minio(app_config.fileserver, app_config.fileserver.cadastre_path, logger)
 
@@ -51,9 +51,9 @@ async def main_async() -> None:
     consumer = KafkaConsumerService(consumer_settings=kafka_settings, logger=logger)
 
     # Create shared HTTP client for urban API
-    urban_api_client = make_http_client(
+    urban_api_client = await make_http_client(
         host=app_config.urban_api.host,
-        api_token=app_config.urban_api.api_token,
+        auth_config=app_config.urban_api.auth.to_keycloak_token_config(),
         ping_timeout_seconds=app_config.urban_api.ping_timeout_seconds,
         operation_timeout_seconds=app_config.urban_api.operation_timeout_seconds,
     )
@@ -80,7 +80,7 @@ async def main_async() -> None:
         await urban_api_client.close()
         await consumer.stop()
 
-        # Clean up temporary file
+        # Clean up a temporary file
         if os.path.exists(cadastre_file_path):
             os.remove(cadastre_file_path)
             await logger.ainfo("Temporary cadastre file removed")
