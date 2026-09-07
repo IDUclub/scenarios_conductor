@@ -1,0 +1,22 @@
+name: Kubernetes dev release
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    uses: IDUclub/urban-assistant-deploy/.github/workflows/reusable-application-release.yaml@main
+    with:
+      service: scenarios-conductor
+      test-command: |
+        python -m pip install --disable-pip-version-check uv==0.12.10 poetry==2.2.1
+        uv python install 3.11
+        poetry env use "$(uv python find 3.11)"
+        poetry install --with dev --no-interaction --no-ansi
+        poetry run pytest --verbose tests/unit
+    secrets: inherit
