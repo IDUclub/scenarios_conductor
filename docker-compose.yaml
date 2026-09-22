@@ -8,7 +8,21 @@ services:
     restart: on-failure
     env_file:
       - ./.env
+    environment:
+      CONFIG_PATH: /app/config.yaml
     volumes:
+      - type: bind
+        source: ${REAL_CONFIG_PATH:-./config.yaml}
+        target: /app/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CADASTRE_HOST_PATH:?Set CADASTRE_HOST_PATH to the existing GeoPackage on the host}
+        target: /data/cadastre.gpkg
+        read_only: true
+        bind:
+          create_host_path: false
       - ./logs:/app/logs
     logging:
       driver: "json-file"

@@ -129,3 +129,10 @@ dmypy.json
 
 *.conf
 config.yaml
+
+# Local cadastral datasets (never commit)
+/cadastre-work/
+*.pickle
+*.pkl
+*.gpkg
+*.gpkg-*

@@ -1,0 +1,13 @@
+
+.git
+.venv
+logs
+**/__pycache__
+**/.pytest_cache
+cadastre-work
+**/*.pickle
+**/*.pkl
+**/*.gpkg
+**/*.gpkg-*
+scenarios_conductor/utils/convert_cadastre.py
+scenarios_conductor/tests/test_local_cadastre_migration.py

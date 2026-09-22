@@ -2,16 +2,20 @@
 handling cadastre data processing for newly created projects.
 """
 
+import json
 import math
 import pickle
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyogrio
 import structlog
 from otteroad.models import ProjectCreated
+from pyproj import CRS
 
 from scenarios_conductor.urban_client import UrbanClient
 from scenarios_conductor.urban_client.http.exceptions import BadRequest, EntityNotFound
@@ -50,6 +54,7 @@ class ProjectCadastreService:
         self._cadastre_file_path = cadastre_file_path
         self._cadastre_gdf: gpd.GeoDataFrame | None = None
         self._logger = logger
+        self._use_geopackage = Path(cadastre_file_path).suffix.lower() == ".gpkg"
 
         self._load_cadastre()
 
@@ -90,7 +95,16 @@ class ProjectCadastreService:
         return gdf
 
     def _load_cadastre(self):
-        """Load cadastre GeoDataFrame from pickle file and reproject to EPSG:4326."""
+        """Validate a disk-backed GeoPackage or load a legacy pickle into memory."""
+
+        if self._use_geopackage:
+            info = pyogrio.read_info(self._cadastre_file_path, layer="cadastre")
+            if not info["crs"] or CRS(info["crs"]).to_epsg() != 4326:
+                raise ValueError("Cadastre GeoPackage must use EPSG:4326")
+            if "attributes_json" not in info["fields"]:
+                raise ValueError("Cadastre GeoPackage must contain the attributes_json column")
+            self._logger.info("Disk-backed cadastre ready", features=info["features"])
+            return
 
         if self._cadastre_gdf is not None:
             return
@@ -107,10 +121,7 @@ class ProjectCadastreService:
         original_crs = data.crs
 
         if original_crs.to_epsg() != 4326:
-            data = data.to_crs(epsg=4326)
-
-        data = self._expand_dict_column(data, "options", "options")
-        data = self._expand_dict_column(data, "system_info", "system")
+            data.to_crs(epsg=4326, inplace=True)
 
         self._cadastre_gdf = data
 
@@ -134,18 +145,38 @@ class ProjectCadastreService:
         """
 
         territory_geom = territory.geometry.as_shapely_geometry()
+        if territory_geom.is_empty:
+            return
 
-        if self._cadastre_gdf.crs is None:
+        if self._use_geopackage:
+            candidates = gpd.read_file(
+                self._cadastre_file_path, layer="cadastre", engine="pyogrio", bbox=territory_geom.bounds
+            )
+        else:
+            candidates = self._cadastre_gdf
+
+        if candidates.crs is None:
             self._logger.awarning(
                 "Cadastre CRS is not defined, assuming same CRS",
                 project_id=territory.project.project_id,
             )
 
         clipped = gpd.clip(
-            self._cadastre_gdf,
+            candidates,
             territory_geom,
             keep_geom_type=True,
         )
+
+        if self._use_geopackage:
+            for _, row in clipped.iterrows():
+                attributes = json.loads(row["attributes_json"])
+                attributes["geometry"] = row.geometry
+                yield self._row_to_project_cadastre(pd.Series(attributes))
+            return
+
+        # Expand only the matching rows instead of normalizing the entire cadastre.
+        clipped = self._expand_dict_column(clipped, "options", "options")
+        clipped = self._expand_dict_column(clipped, "system_info", "system")
 
         self._logger.info(
             "Cadastre clipped to territory",
@@ -167,7 +198,7 @@ class ProjectCadastreService:
         try:
             if pd.isna(val):
                 return None
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # float NaN (на всякий случай)

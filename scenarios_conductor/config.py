@@ -61,6 +61,19 @@ class FileServerConfig:
 
 
 @dataclass
+class CadastreConfig:
+    """Path to an existing GeoPackage, mounted read-only in Docker."""
+
+    path: str = "/data/cadastre.gpkg"
+
+    def __post_init__(self):
+        if not isinstance(self.path, str) or not self.path.strip():
+            raise ValueError("cadastre.path must be a non-empty local file path")
+        if Path(self.path).suffix.lower() != ".gpkg":
+            raise ValueError("cadastre.path must point to a .gpkg file")
+
+
+@dataclass
 class BrokerConfig:
     """Configuration for Kafka broker and Schema Registry."""
 
@@ -110,7 +123,7 @@ class UrbanAPIConfig:
 
     def __post_init__(self):
         if isinstance(self.auth, dict):
-            self.auth = UrbanAPIAuthConfig(**self.auth)
+            self.auth = UrbanAPIAuthConfig(**self.auth)  # pylint: disable=not-a-mapping
 
 
 @dataclass
@@ -124,7 +137,7 @@ class AppConfig:
     name: str
     logging: LoggingConfig
     prometheus: PrometheusConfig
-    fileserver: FileServerConfig
+    cadastre: CadastreConfig
     broker: BrokerConfig
     urban_api: UrbanAPIConfig
 
@@ -152,7 +165,7 @@ class AppConfig:
                 ("name", self.name),
                 ("logging", to_ordered_dict_recursive(self.logging)),
                 ("prometheus", to_ordered_dict_recursive(self.prometheus)),
-                ("fileserver", to_ordered_dict_recursive(self.fileserver)),
+                ("cadastre", to_ordered_dict_recursive(self.cadastre)),
                 ("broker", to_ordered_dict_recursive(self.broker)),
                 ("urban_api", to_ordered_dict_recursive(self.urban_api)),
             ]
@@ -193,13 +206,7 @@ class AppConfig:
             name="example app",
             logging=LoggingConfig(level="INFO", files=[FileLogger(filename="logs/info.log", level="INFO")]),
             prometheus=PrometheusConfig(port=9000, disable=False),
-            fileserver=FileServerConfig(
-                url="http://localhost:9000",
-                bucket="scenarios.conductor",
-                cadastre_path="cadastre.pickle",
-                access_key="",
-                secret_key="",
-            ),
+            cadastre=CadastreConfig(),
             broker=BrokerConfig(
                 client_id="scenarios-conductor",
                 group_id="scenarios-conductor-group",
@@ -244,7 +251,7 @@ class AppConfig:
                 name=data.get("name", "example app"),
                 logging=LoggingConfig(**data.get("logging", {})),
                 prometheus=PrometheusConfig(**data.get("prometheus", {})),
-                fileserver=FileServerConfig(**data.get("fileserver", {})),
+                cadastre=CadastreConfig(**data["cadastre"]),
                 broker=BrokerConfig(**data.get("broker", {})),
                 urban_api=UrbanAPIConfig(**data.get("urban_api", {})),
             )
@@ -274,7 +281,7 @@ class AppConfig:
         Args:
             other (AppConfig): The configuration instance to merge from.
         """
-        for section in ("logging", "prometheus", "broker", "urban_api"):
+        for section in ("logging", "prometheus", "cadastre", "broker", "urban_api"):
             current_subconfig = getattr(self, section)
             other_subconfig = getattr(other, section)
 
