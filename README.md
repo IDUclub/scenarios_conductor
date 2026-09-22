@@ -79,10 +79,30 @@ This ensures logical consistency between user projects and regional scenarios in
 
    ```bash
    cp config.yaml.example config.yaml
-   cp env.example .env
+   cp .env.example .env
    ```
 
-2. **Run the service**:
+2. **Mount the existing cadastre**:
+
+   Copy the prepared GeoPackage to the Docker host once, for example to
+   `/srv/scenarios-conductor/cadastre.gpkg`. Set `CADASTRE_HOST_PATH` in `.env`
+   to that host path and `REAL_CONFIG_PATH` to your application YAML.
+
+   ```yaml
+   cadastre:
+     path: /data/cadastre.gpkg
+   ```
+
+   Both Compose files mount the GeoPackage read-only at this container path.
+   A missing host file causes startup to fail instead of creating a directory.
+   The service does not download from MinIO or delete the mounted file.
+   The GeoPackage must contain the `cadastre` layer in EPSG:4326 with
+   `attributes_json` and a spatial index, as produced by the migration script.
+   Dataset files are excluded from Git and Docker build context.
+   For a local Python launch, set `cadastre.path` to the actual local file path.
+   Existing deployment configs must be updated before deploying this version.
+
+3. **Run the service**:
 
    ```bash
    docker-compose up -d --build
