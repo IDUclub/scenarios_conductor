@@ -76,7 +76,7 @@ class HTTPUrbanClient(UrbanClient):
     async def start(self):
         if self._session is None or self._session.closed:
             self._session = ClientSession(base_url=self._host, timeout=ClientTimeout(self._operation_timeout))
-        await self._auth_client.__aenter__()
+        await self._auth_client.__aenter__()  # pylint: disable=unnecessary-dunder-call
         return self
 
     async def close(self):
